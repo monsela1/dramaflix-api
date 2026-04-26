@@ -4,60 +4,64 @@ import time
 import traceback
 from flask import Flask, request, jsonify
 
-# បង្ខំ Server ឱ្យដើរម៉ោងស្រុកខ្មែរ
+# បង្ខំ Server ឱ្យដើរម៉ោងនៅស្រុកខ្មែរ ១០០%
 os.environ['TZ'] = 'Asia/Phnom_Penh'
-time.tzset()
+if hasattr(time, 'tzset'):
+    time.tzset()
 
-path = '/home/dramaflix/mysite'
-if path not in sys.path:
-    sys.path.insert(0, path)
-
-# ហៅ Package ផ្លូវការមកប្រើ (លែងគាំងទៀតហើយ)
 from bakong_khqr import KHQR
 
 app = Flask(__name__)
 app.config["DEBUG"] = True
 
-# Token បាកងរបស់មេ
+# 🔴 ប្រើ RBK Token ថ្មីរបស់មេ ដើម្បីទម្លាយប្លុក IP ក្រៅប្រទេស
 MY_TOKEN = "rbkGgBjB2q5EmMkSXSmMrlpi0n1vF3HYjx30GKZ4DC5yGA"
 khqr = KHQR(MY_TOKEN)
 
 @app.route('/')
 def index():
-    return "<h1>✅ DramaFlix API (Official SDK) is Running!</h1>"
+    return "<h1>✅ DramaFlix Movie API is Running!</h1>"
 
 @app.route('/generate_qr', methods=['POST'])
 def generate_qr():
     try:
         data = request.json or {}
+        
+        # ១. ទាញយក UID ភ្ញៀវ
         raw_uid = data.get('uid', 'UNKNOWN')
         short_uid = raw_uid[:8] if len(raw_uid) > 8 else raw_uid
-        bill_num = f"VIP{short_uid}" 
+        bill_num = f"MV{short_uid}" 
 
-        # ----------------------------------------------------
-        # ប្រើតាមស្តង់ដារ Document ថ្មី (v0.5.7) 
-        # (🔴 កុំភ្លេចដូរ Bakong ID ដាក់របស់មេពិតប្រាកដ)
-        # ----------------------------------------------------
+        # ២. 🔴 ចំណុចថ្មី៖ ទាញយកតម្លៃលុយដែលផ្ញើមកពី Flutter
+        # បើ Flutter មិនបានផ្ញើតម្លៃមកទេ វានឹងដាក់តម្លៃដើម 1.0 ដុល្លារ
+        try:
+            price_amount = float(data.get('amount', 1.0))
+        except:
+            price_amount = 1.0
+
+        # ៣. បង្កើត QR តាមស្តង់ដារបាកង
         qr_string = khqr.create_qr(
-            bank_account="monsela@aclb",      # 🔴 ដូរជា Bakong ID មេ
-            merchant_name="MON SELA",         # 🔴 ឈ្មោះមេ (អក្សរធំ)
+            bank_account="monsela@aclb",      # Bakong ID របស់មេ
+            merchant_name="MON SELA",         # ឈ្មោះក្នុងកុង (អក្សរធំ)
             merchant_city="PHNOM PENH",      
-            amount=1.0,                       # លុយ ១ ដុល្លារ
-            currency="USD",                   # (បើកុងលុយរៀល ដូរដាក់ KHR ហើយ amount ដាក់ 4000)
+            amount=price_amount,              # 💵 ប្រើតម្លៃដែលបានមកពី Flutter
+            currency="USD",                   
             store_label="DRAMAFLIX",         
-            phone_number="85512345678",       # លេខទូរស័ព្ទត្រូវតែមាន 855 ពីមុខ
+            phone_number="85512345678",       
             bill_number=bill_num,            
             terminal_label="APP",            
             static=False,
-            expiration=10                     # 🔴 មុខងារថ្មី៖ កំណត់ឱ្យ QR មានសុពលភាព ១០ នាទី
+            expiration=10                     # QR មានសុពលភាព ១០ នាទី
         )
         
+        # ៤. បង្កើត MD5 សម្រាប់ទុកឆែកស្ថានភាពបង់ប្រាក់
         md5_hash = khqr.generate_md5(qr_string)
         
         return jsonify({
             "status": "success", 
             "qr_string": qr_string, 
-            "md5": md5_hash
+            "md5": md5_hash,
+            "amount": price_amount
         })
         
     except Exception as e:
@@ -72,22 +76,28 @@ def check_status():
         md5 = data.get('md5')
         
         if not md5: 
-            return jsonify({"status": "error", "message": "បាត់ MD5"}), 400
+            return jsonify({"status": "error", "message": "បាត់លេខ MD5"}), 400
         
+        # ឆែកស្ថានភាពលុយពីធនាគារជាតិបាកង
         status = khqr.check_payment(md5) 
+        
+        # បោះលទ្ធផលទៅឱ្យ Flutter វិញ (PAID ឬ UNPAID)
         return jsonify({"status": status})
         
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
-if __name__ == '__main__':
-    app.run(debug=True)
-    
-@app.route('/test_api')
-def test_api():
+# មុខងារសម្រាប់តេស្តសាកល្បងលើ Browser
+@app.route('/test_connection')
+def test_connection():
     try:
-        # តេស្តឆែកមើលលុយដោយប្រើ MD5 ក្លែងក្លាយ
+        # តេស្តឆែកលុយដោយប្រើ MD5 ក្លែងក្លាយ ដើម្បីដឹងថា Server ដើរឬអត់
         status = khqr.check_payment("1234567890abcdef")
-        return f"<h1>✅ ជោគជ័យ! Server អាចឆ្លងដែនទៅសួរ Bakong API បានហើយ! (លទ្ធផល: {status})</h1>"
+        return f"<h1>✅ ជោគជ័យ! Server អាចភ្ជាប់ទៅបាកងបាន (Status: {status})</h1>"
     except Exception as e:
-        return f"<h1>❌ Error ភ្ជាប់ទៅធនាគារ៖ {e}</h1>"
+        return f"<h1>❌ បរាជ័យ៖ {e}</h1>"
+
+if __name__ == '__main__':
+    # Render តម្រូវឱ្យប្រើ Port ដែលវាផ្ដល់ឱ្យ
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
