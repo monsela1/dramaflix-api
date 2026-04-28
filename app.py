@@ -42,7 +42,7 @@ def generate_qr():
         # ៣. បង្កើត QR តាមស្តង់ដារបាកង
         qr_string = khqr.create_qr(
             bank_account="monsela@aclb",      # Bakong ID របស់មេ
-            merchant_name="MON SELA",         # ឈ្មោះក្នុងកុង (អក្សរធំ)
+            merchant_name="DRAMA FLIX",         # ឈ្មោះក្នុងកុង (អក្សរធំ)
             merchant_city="PHNOM PENH",      
             amount=price_amount,              # 💵 ប្រើតម្លៃដែលបានមកពី Flutter
             currency="USD",                   
