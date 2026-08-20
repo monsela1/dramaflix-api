@@ -15,7 +15,7 @@ app = Flask(__name__)
 app.config["DEBUG"] = True
 
 # 🔴 ប្រើ RBK Token ថ្មីរបស់មេ ដើម្បីទម្លាយប្លុក IP ក្រៅប្រទេស
-MY_TOKEN = "rbk6oWzLWXhkVzI8XRiFClRlwPSHOzTwa0v-agsm4D6CkU"
+MY_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkYXRhIjp7ImlkIjoiZjkxMWRmMWM3ZmZkNDJlMyJ9LCJpYXQiOjE3ODcxOTEwMzEsImV4cCI6MTc5NDk2NzAzMX0.PuRZoqmhzxQ5UJUrNSGhS5oqMTOn52BWrgOCQhZZxL8"
 khqr = KHQR(MY_TOKEN)
 
 @app.route('/')
